@@ -1,0 +1,28 @@
+[project]
+name = "chainscope"
+version = "0.1.0"
+description = "GLM-5.1 powered on-chain graph anomaly detection agent"
+authors = [{ name = "SKYEJT" }]
+requires-python = ">=3.10"
+dependencies = [
+    "torch>=2.0",
+    "torch-geometric>=2.4",
+    "langchain>=0.2",
+    "langgraph>=0.2",
+    "langchain-openai>=0.1",
+    "langchain-community>=0.2",
+    "web3>=6.0",
+    "requests>=2.31",
+    "networkx>=3.0",
+    "streamlit>=1.30",
+    "matplotlib>=3.7",
+    "pyvis>=0.3",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff"]
+# Frontend test/demo extras: kaleido 0.2.1 ships its own chromium so plotly
+# figures export to PNG offline (no system Chrome needed) in
+# tests/export_frontend_artifacts.py.
+test = ["pytest", "kaleido==0.2.1"]

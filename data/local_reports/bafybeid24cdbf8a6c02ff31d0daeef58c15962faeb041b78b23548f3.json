@@ -1,0 +1,9 @@
+{
+  "report": "## ChainScope Investigation Report — 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045\n\n**Final Risk Score:** 0.05 (LOW)  \n**Verdict:** NORMAL / CLEAR — Legitimate entity, no laundering/mixing/fraud detected.  \n**Label Reconciliation:** vitalik.eth (Vitalik Buterin, Ethereum co-founder) — blind verdict AGREE ✅\n\n### Investigation Summary\n- **Transaction Graph:** 2212+ connected nodes, 10000+ token transfers, 10000+ internal txs. Extremely active since early Ethereum history.\n- **ML Anomaly (GB-TGAD):** Overall=0.39 (LOW). Struct=0.0 (normal), Flow=0.4 (normal economic behavior).\n- **Address Labels:** Target sealed label=vitalik.eth. Counterparties include USDC contract and other mainstream DeFi protocols. No mixer/sanctioned entities found.\n- **Fund Flow Tracing:** Dominant outflow 160 ETH via intermediary to WEX-related address. Inflows are small (0.01-0.02 ETH). All paths transparent with no darknet/mixer connections.\n- **Token History:** DAO, OMG, UET — early Ethereum ecosystem tokens consistent with founder activity.\n\n### Hypotheses\n- ✅ CONFIRMED: Legitimate high-activity entity (exchange/DeFi/notable person)\n- ❌ REFUTED: Mixer intermediary for laundered funds\n- ❌ REFUTED: Phishing/Ponzi/fraud scheme participation\n\n### Recommendation: CLEAR — No flagging or monitoring required.",
+  "metadata": {
+    "address": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+    "anomaly_score": 0.05,
+    "is_anomalous": false
+  },
+  "timestamp": "2026-06-10T06:24:32.953744+00:00"
+}
