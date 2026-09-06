@@ -181,7 +181,42 @@ TRANSLATIONS = {
                            "cn": "⚠️ 复制失败，请手动选中下方文本复制。"},
     "download_btn":       {"en": "⬇️ Download logs (.txt)", "cn": "⬇️ 下载日志（.txt）"},
     "no_logs":            {"en": "No logs recorded yet.", "cn": "暂无可复制的日志。"},
+    # ── shell / empty state ──
+    "side_setup":         {"en": "Setup", "cn": "配置"},
+    "side_scope":         {"en": "Scope", "cn": "调查范围"},
+    "side_agent":         {"en": "Agent", "cn": "智能体"},
+    "side_integrity":     {"en": "Evaluation integrity", "cn": "评测完整性"},
+    "chip_blind_on":      {"en": "Blind-label ON", "cn": "标签盲测 开"},
+    "chip_blind_off":     {"en": "Blind-label OFF", "cn": "标签盲测 关"},
+    "chip_attest":        {"en": "EAS · Sepolia", "cn": "EAS · Sepolia"},
+    "target_panel":       {"en": "Target address", "cn": "调查目标地址"},
+    "empty_headline":     {"en": "Point it at an Ethereum address.",
+                           "cn": "给它一个以太坊地址。"},
+    "empty_body":         {"en": "The agent decides every move itself — it reads the chain, forms hypotheses, traces fund flows, and revises its own conclusions as evidence arrives. A full investigation runs for dozens of steps.",
+                           "cn": "接下来的每一步都由智能体自己决定——读取链上数据、提出假设、追踪资金流向，并在证据出现时推翻或修正自己的结论。一次完整调查会持续数十步。"},
+    "cap1_title":         {"en": "17 tools, chosen at runtime", "cn": "17 个工具，运行时自主选择"},
+    "cap1_body":          {"en": "Nothing is a fixed pipeline. The model picks each next action — pull transactions, build the graph, run GB-TGAD anomaly detection, trace a path deeper.",
+                           "cn": "没有任何固定流程。模型自行决定下一步做什么——拉取交易、构建图、运行 GB-TGAD 异常检测、沿着某条路径继续深挖。"},
+    "cap2_title":         {"en": "Labels are sealed, not looked up", "cn": "标签被封存，而非直接查表"},
+    "cap2_body":          {"en": "Any matched label is hidden from the model during the run and revealed only at the end, so the verdict has to be earned from on-chain behaviour.",
+                           "cn": "命中的标签在调查期间对模型隐藏，结束后才揭晓比对，因此结论必须完全从链上行为中推出来。"},
+    "cap3_title":         {"en": "The verdict goes on-chain", "cn": "结论上链存证"},
+    "cap3_body":          {"en": "The final report is pinned to IPFS and an EAS attestation is written on Sepolia, so the finding is timestamped and independently checkable.",
+                           "cn": "最终报告固定到 IPFS，并在 Sepolia 上写入 EAS 存证，使结论具备可独立验证的时间戳。"},
+    "try_label":          {"en": "Or start from an address this agent has already investigated",
+                           "cn": "也可以从这些已经调查过的地址开始"},
+    "sample_mixer":       {"en": "Mixer", "cn": "混币器"},
+    "sample_cex":         {"en": "Exchange", "cn": "交易所"},
+    "sample_dex":         {"en": "DEX router", "cn": "DEX 路由"},
 }
+
+# Public addresses this agent has already run, used as one-click demo targets.
+# The name is shown to the *user* only — the agent still runs blind (see BLIND_MODE).
+SAMPLE_TARGETS = [
+    ("sample_mixer", "0x12D66f87A04A9E220743712cE6d9bB1B5616B8Fc"),
+    ("sample_cex",   "0x28C6c06298d514Db089934071355E5743bf21d60"),
+    ("sample_dex",   "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"),
+]
 
 NODE_LABEL_I18N = {
     "plan":    {"en": ("🧭", "Plan"),                 "cn": ("🧭", "规划")},
@@ -192,7 +227,10 @@ NODE_LABEL_I18N = {
 }
 
 # Language selector (kept first so the whole UI re-renders in the chosen language).
+# The brand block above it is only a reserved slot here: it needs LANG to render,
+# but visually belongs at the very top of the sidebar.
 LANG_OPTIONS = {"English": "en", "中文": "cn"}
+_brand_slot = st.sidebar.container()
 with st.sidebar:
     _lang_choice = st.radio(
         "🌐 Language / 语言",
@@ -216,65 +254,271 @@ def node_label(node_name: str):
 
 st.markdown("""
 <style>
-    .stApp { background-color: #f8f9fa; }
-    .stSidebar { background-color: #ffffff; border-right: 1px solid #e0e0e0; }
-    .metric-card {
-        background: linear-gradient(135deg, #ffffff 0%, #f0f4ff 100%);
-        border: 1px solid #d0d7e6; border-radius: 14px; padding: 20px;
-        text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    }
-    .metric-card h3 { margin: 0; color: #4a5568; font-size: 14px; font-weight: 600; }
-    .metric-card h1 { margin: 5px 0; font-size: 32px; font-weight: 700; }
-    .metric-card.risk-high h1 { color: #e53e3e; }
-    .metric-card.risk-low h1 { color: #38a169; }
-    .metric-card.risk-med h1 { color: #d69e2e; }
-    .score-bar-bg { background: #e2e8f0; border-radius: 8px; height: 14px; }
-    .score-bar-fill { border-radius: 8px; height: 14px; transition: width 0.5s; }
+:root {
+    --cs-bg:        #0A0C12;
+    --cs-surface:   #141A24;
+    --cs-surface-2: #1A2230;
+    --cs-border:    #232D3D;
+    --cs-border-hi: #35435C;
+    --cs-text:      #E8EDF5;
+    --cs-dim:       #93A1B5;
+    --cs-faint:     #64748B;
+    --cs-accent:    #7C6BFF;
+    --cs-accent-2:  #22D3EE;
+    --cs-ok:        #2ECC8F;
+    --cs-warn:      #F5B942;
+    --cs-bad:       #FF5C6C;
+    --cs-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+/* ── Page shell ───────────────────────────────────────────────────────── */
+.stApp { background:
+    radial-gradient(1100px 520px at 12% -8%, rgba(124,107,255,.13), transparent 60%),
+    radial-gradient(900px 460px at 92% -4%, rgba(34,211,238,.09), transparent 60%),
+    var(--cs-bg); }
+[data-testid="stHeader"] { background: transparent; }
+[data-testid="stToolbar"], [data-testid="stDecoration"] { display: none; }
+.block-container { padding-top: 2.2rem; padding-bottom: 3rem; max-width: 1320px; }
+hr { border-color: var(--cs-border) !important; }
+
+/* ── Sidebar ──────────────────────────────────────────────────────────── */
+section[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #0E131C 0%, #0B0F17 100%);
+    border-right: 1px solid var(--cs-border);
+}
+section[data-testid="stSidebar"] .block-container { padding-top: 1.4rem; }
+.cs-side-title {
+    font-size: 11px; font-weight: 700; letter-spacing: .13em; text-transform: uppercase;
+    color: var(--cs-faint); margin: 16px 0 6px 0; padding-left: 9px;
+    border-left: 2px solid var(--cs-accent);
+}
+
+/* ── Brand / hero ─────────────────────────────────────────────────────── */
+.cs-brand {
+    font-size: 40px; font-weight: 800; letter-spacing: -.025em; line-height: 1.1; margin: 0;
+    background: linear-gradient(92deg, #FFFFFF 8%, var(--cs-accent) 55%, var(--cs-accent-2) 100%);
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+.cs-tagline { color: var(--cs-dim); font-size: 15px; margin: 6px 0 0 0; }
+.cs-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 4px 0; }
+.cs-chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: var(--cs-surface); border: 1px solid var(--cs-border);
+    border-radius: 999px; padding: 5px 13px; font-size: 12.5px; color: var(--cs-dim);
+    transition: border-color .15s ease, color .15s ease;
+}
+.cs-chip:hover { border-color: var(--cs-border-hi); color: var(--cs-text); }
+.cs-chip b { color: var(--cs-text); font-weight: 600; font-family: var(--cs-mono); font-size: 12px; }
+.cs-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--cs-ok);
+          box-shadow: 0 0 0 3px rgba(46,204,143,.16); }
+.cs-dot.off { background: var(--cs-faint); box-shadow: 0 0 0 3px rgba(100,116,139,.14); }
+
+/* ── Panels ───────────────────────────────────────────────────────────── */
+.cs-panel {
+    background: var(--cs-surface); border: 1px solid var(--cs-border);
+    border-radius: 16px; padding: 22px 24px; margin: 6px 0 18px 0;
+}
+.cs-panel-label {
+    font-size: 11px; font-weight: 700; letter-spacing: .13em; text-transform: uppercase;
+    color: var(--cs-faint); margin-bottom: 12px;
+}
+
+/* ── Loop / capability strip ──────────────────────────────────────────── */
+.cs-loop { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.cs-loop span {
+    font-family: var(--cs-mono); font-size: 12px; color: var(--cs-text);
+    background: var(--cs-surface-2); border: 1px solid var(--cs-border-hi);
+    border-radius: 8px; padding: 7px 13px;
+}
+.cs-loop i { color: var(--cs-accent); font-style: normal; font-size: 15px; }
+.cs-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 6px; }
+.cs-card {
+    position: relative; background: var(--cs-surface); border: 1px solid var(--cs-border);
+    border-radius: 14px; padding: 18px 20px;
+    transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+.cs-card:hover {
+    transform: translateY(-3px); border-color: var(--cs-border-hi);
+    box-shadow: 0 12px 30px rgba(0,0,0,.35);
+}
+.cs-card h4 { margin: 0 0 6px 0; font-size: 14.5px; font-weight: 650; color: var(--cs-text); }
+.cs-card p  { margin: 0; font-size: 13px; line-height: 1.55; color: var(--cs-dim); }
+
+/* ── Result metric cards ──────────────────────────────────────────────── */
+.metric-card {
+    position: relative; overflow: hidden;
+    background: var(--cs-surface); border: 1px solid var(--cs-border);
+    border-radius: 16px; padding: 20px 18px; text-align: center;
+    transition: transform .18s ease, box-shadow .18s ease;
+}
+.metric-card:hover { transform: translateY(-3px); box-shadow: 0 12px 30px rgba(0,0,0,.35); }
+.metric-card::before {
+    content: ""; position: absolute; inset: 0 0 auto 0; height: 3px;
+    background: linear-gradient(90deg, var(--cs-accent), var(--cs-accent-2));
+}
+.metric-card.risk-high::before { background: linear-gradient(90deg, var(--cs-bad), #FF9A6B); }
+.metric-card.risk-med::before  { background: linear-gradient(90deg, var(--cs-warn), #FFD98A); }
+.metric-card.risk-low::before  { background: linear-gradient(90deg, var(--cs-ok), var(--cs-accent-2)); }
+.metric-card h3 {
+    margin: 0; font-size: 11px; font-weight: 700; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--cs-faint);
+}
+.metric-card h1 {
+    margin: 10px 0 2px 0; font-size: 34px; font-weight: 750; line-height: 1.1;
+    font-family: var(--cs-mono); color: var(--cs-text);
+}
+.metric-card.risk-high h1 { color: var(--cs-bad); }
+.metric-card.risk-low  h1 { color: var(--cs-ok); }
+.metric-card.risk-med  h1 { color: var(--cs-warn); }
+
+/* ── Risk bar ─────────────────────────────────────────────────────────── */
+.score-bar-bg {
+    position: relative; background: var(--cs-surface-2);
+    border: 1px solid var(--cs-border); border-radius: 999px; height: 12px;
+}
+.score-bar-fill { border-radius: 999px; height: 100%; transition: width .6s ease; }
+.score-bar-bg::after {
+    content: ""; position: absolute; left: 60%; top: -4px; bottom: -4px;
+    width: 2px; background: var(--cs-border-hi);
+}
+.cs-bar-legend {
+    display: flex; justify-content: space-between; margin-top: 8px;
+    color: var(--cs-faint); font-size: 11.5px; font-family: var(--cs-mono);
+}
+
+/* ── Streamlit widgets ────────────────────────────────────────────────── */
+.stTextInput input, .stNumberInput input, .stTextArea textarea {
+    background: var(--cs-surface-2) !important; border: 1px solid var(--cs-border) !important;
+    border-radius: 10px !important; color: var(--cs-text) !important;
+}
+.stTextInput input:focus, .stNumberInput input:focus {
+    border-color: var(--cs-accent) !important; box-shadow: 0 0 0 3px rgba(124,107,255,.16) !important;
+}
+#cs-address input { font-family: var(--cs-mono); font-size: 15px; letter-spacing: .01em; }
+.stButton > button {
+    border-radius: 10px; border: 1px solid var(--cs-border-hi);
+    background: var(--cs-surface-2); color: var(--cs-text); font-weight: 550;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    transition: border-color .15s ease, transform .15s ease, box-shadow .15s ease;
+}
+.stButton > button:hover {
+    border-color: var(--cs-accent); color: var(--cs-text);
+    transform: translateY(-1px); box-shadow: 0 6px 18px rgba(124,107,255,.14);
+}
+.stButton > button[kind="primary"] {
+    background: linear-gradient(92deg, var(--cs-accent), #5A73FF);
+    border: none; color: #fff; font-weight: 650;
+    box-shadow: 0 6px 20px rgba(124,107,255,.28);
+}
+.stButton > button[kind="primary"]:hover {
+    transform: translateY(-1px); color: #fff;
+    box-shadow: 0 10px 28px rgba(124,107,255,.42);
+}
+[data-testid="stExpander"] {
+    background: var(--cs-surface); border: 1px solid var(--cs-border) !important;
+    border-radius: 12px !important;
+}
+[data-testid="stExpander"] summary { font-family: var(--cs-mono); font-size: 12.5px; }
+[data-testid="stAlert"] { border-radius: 12px; border: 1px solid var(--cs-border); }
+[data-testid="stMetricValue"] { font-family: var(--cs-mono); }
+code { background: var(--cs-surface-2) !important; color: var(--cs-accent-2) !important; }
+[data-testid="stDataFrame"] { border: 1px solid var(--cs-border); border-radius: 12px; }
+h2, h3 { letter-spacing: -.015em; }
+
+/* ── Live stream rows ─────────────────────────────────────────────────── */
+.cs-stream-tool {
+    font-family: var(--cs-mono); font-size: 12.5px; color: var(--cs-dim);
+    border-left: 2px solid var(--cs-accent); padding: 2px 0 2px 12px; margin: 2px 0 2px 14px;
+}
+.cs-phase {
+    display: flex; align-items: center; gap: 10px; margin: 18px 0 10px 0;
+    color: var(--cs-dim); font-size: 12.5px; font-family: var(--cs-mono);
+}
+.cs-phase::after { content: ""; flex: 1; height: 1px; background: var(--cs-border); }
+
+/* ── Footer ───────────────────────────────────────────────────────────── */
+.cs-footer {
+    text-align: center; color: var(--cs-faint); font-size: 12.5px; padding: 8px 0 4px 0;
+}
+.cs-footer a { color: var(--cs-accent-2); text-decoration: none; }
+.cs-footer a:hover { text-decoration: underline; }
+
+/* ── Scrollbar + text selection (premium polish) ──────────────────────── */
+::selection { background: rgba(124,107,255,.35); color: #fff; }
+* { scrollbar-width: thin; scrollbar-color: var(--cs-border-hi) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb {
+    background: var(--cs-border-hi); border-radius: 8px; border: 2px solid var(--cs-bg);
+}
+::-webkit-scrollbar-thumb:hover { background: #46577A; }
+::-webkit-scrollbar-track { background: transparent; }
+
+@media (max-width: 900px) { .cs-cards { grid-template-columns: 1fr; } }
 </style>
 """, unsafe_allow_html=True)
 
 # ── Sidebar ──
+with _brand_slot:
+    st.markdown(
+        f"<div style='font-size:22px;font-weight:750;letter-spacing:-.02em'>🔍 ChainScope</div>"
+        f"<div style='color:#93A1B5;font-size:12.5px;margin:2px 0 10px 0'>{t('tagline')}</div>",
+        unsafe_allow_html=True,
+    )
+
 with st.sidebar:
-    st.markdown("# 🔍 ChainScope")
-    st.caption(t("tagline"))
-    st.divider()
+    st.markdown(f"<div class='cs-side-title'>{t('side_setup')}</div>", unsafe_allow_html=True)
     model = st.selectbox(t("model_label"), [cs_config.LLM_MODEL], index=0,
                          help=t("model_help"))
+
+    st.markdown(f"<div class='cs-side-title'>{t('side_scope')}</div>", unsafe_allow_html=True)
     st.session_state.setdefault("window_days", 30)
     window_days = st.number_input(t("window_label"), min_value=1, max_value=6000,
                                   step=1, key="window_days", help=t("window_help"))
+
+    st.markdown(f"<div class='cs-side-title'>{t('side_agent')}</div>", unsafe_allow_html=True)
     max_steps = st.slider(t("max_steps_label"), 8, 60, 24,
                           help=t("max_steps_help"))
     reflect_every = st.slider(t("reflect_label"), 2, 8, 4,
                               help=t("reflect_help"))
+
+    st.markdown(f"<div class='cs-side-title'>{t('side_integrity')}</div>", unsafe_allow_html=True)
     blind_mode = st.checkbox(t("blind_label"), value=bool(cs_config.BLIND_MODE),
                              help=t("blind_help"))
     cs_config.BLIND_MODE = bool(blind_mode)
+
     st.divider()
-    st.markdown(f"### {t('autonomy_loop')}")
-    st.caption(t("loop_steps"))
-    st.caption(t("loop_caption"))
-    st.divider()
-    st.markdown(f"### {t('about')}")
     st.caption(t("about_caption"))
 
 # ── Header ──
+_blind_chip = t("chip_blind_on") if blind_mode else t("chip_blind_off")
+_model_chip = t("model_label").replace("🤖 ", "")
 st.markdown(f"""
-<h1 style='margin-bottom:0'>ChainScope</h1>
-<p style='color:#718096; margin-top:0'>{t('header_sub')}</p>
+<h1 class="cs-brand">ChainScope</h1>
+<p class="cs-tagline">{t('header_sub')}</p>
+<div class="cs-chips">
+<span class="cs-chip"><span class="cs-dot"></span>{_model_chip} <b>{cs_config.LLM_MODEL}</b></span>
+<span class="cs-chip"><span class="cs-dot{'' if blind_mode else ' off'}"></span>{_blind_chip}</span>
+<span class="cs-chip"><span class="cs-dot"></span>{t('chip_attest')}</span>
+</div>
 """, unsafe_allow_html=True)
 
+st.markdown(f"<div class='cs-panel-label' style='margin:22px 0 8px 0'>{t('target_panel')}</div>",
+            unsafe_allow_html=True)
 col_input, col_btn = st.columns([4, 1])
 with col_input:
+    st.markdown("<div id='cs-address'>", unsafe_allow_html=True)
     address = st.text_input("Ethereum Address", placeholder=t("address_placeholder"),
                             key="address_input", label_visibility="collapsed")
+    st.markdown("</div>", unsafe_allow_html=True)
 with col_btn:
     investigate = st.button(t("investigate_btn"), type="primary", use_container_width=True)
 
-custom_goal = st.text_input(
-    t("goal_label"),
-    placeholder=t("goal_placeholder"),
-)
+col_goal, _ = st.columns([4, 1])  # same split as the address row, so they line up
+with col_goal:
+    custom_goal = st.text_input(
+        t("goal_label"),
+        placeholder=t("goal_placeholder"),
+    )
 
 
 def _probe_activity():
@@ -297,7 +541,19 @@ def _probe_activity():
     st.session_state["activity_span"] = span
 
 
-st.button(t("activity_probe_btn"), on_click=_probe_activity)
+def _use_sample(addr: str):
+    """Fill the address box from a one-click demo target."""
+    st.session_state["address_input"] = addr
+
+
+_probe_col, *_sample_cols = st.columns([1.7, 1.1, 1.1, 1.1])
+with _probe_col:
+    st.button(t("activity_probe_btn"), on_click=_probe_activity, use_container_width=True)
+for _col, (_key, _addr) in zip(_sample_cols, SAMPLE_TARGETS):
+    with _col:
+        st.button(f"{t(_key)} · {_addr[:6]}…", key=f"sample_{_addr}",
+                  on_click=_use_sample, args=(_addr,), use_container_width=True,
+                  help=_addr)
 
 _span = st.session_state.get("activity_span")
 if _span is not None:
@@ -313,6 +569,33 @@ if _span is not None:
             st.success(t("activity_suggest", sug=_span["suggested_window"]))
 
 
+def render_empty_state():
+    """What the page shows before an investigation is launched.
+
+    The HTML is emitted flush-left: Streamlit runs the string through Markdown
+    first, so indented lines would turn into code blocks.
+    """
+    parts = [p.strip() for p in t("loop_steps").split("→")]
+    phases = "<i>→</i>".join(f"<span>{p}</span>" for p in parts)
+    st.markdown(
+        f"""
+<div class="cs-panel">
+<div class="cs-panel-label">{t('autonomy_loop')}</div>
+<div class="cs-loop">{phases}</div>
+<p style="color:#93A1B5;font-size:13px;margin:14px 0 0 0">{t('loop_caption')}</p>
+</div>
+<h3 style="margin:26px 0 6px 0">{t('empty_headline')}</h3>
+<p style="color:#93A1B5;max-width:74ch;line-height:1.6;margin:0 0 20px 0">{t('empty_body')}</p>
+<div class="cs-cards">
+<div class="cs-card"><h4>{t('cap1_title')}</h4><p>{t('cap1_body')}</p></div>
+<div class="cs-card"><h4>{t('cap2_title')}</h4><p>{t('cap2_body')}</p></div>
+<div class="cs-card"><h4>{t('cap3_title')}</h4><p>{t('cap3_body')}</p></div>
+</div>
+""",
+        unsafe_allow_html=True,
+    )
+
+
 def _render_act(update):
     """Render an ACT update: LLM reasoning + any tool calls it decided on."""
     for m in update.get("messages", []):
@@ -320,9 +603,12 @@ def _render_act(update):
         if content:
             st.markdown(f"🤖 **{cs_config.LLM_MODEL}:** {content}")
         for tc in getattr(m, "tool_calls", None) or []:
-            args = tc.get("args", {})
-            st.markdown(f"&nbsp;&nbsp;↳ 🛠️ calling **`{tc.get('name')}`** "
-                        f"`{str(args)[:160]}`")
+            args = str(tc.get("args", {}))[:160]
+            st.markdown(
+                f"<div class='cs-stream-tool'>↳ <b style='color:#7C6BFF'>"
+                f"{tc.get('name')}</b>({__import__('html').escape(args)})</div>",
+                unsafe_allow_html=True,
+            )
 
 
 def _render_observe(update, captured):
@@ -381,17 +667,18 @@ def render_copy_logs(full_log: str):
     copied = t("copied")
     failed = t("copy_failed")
     html = f"""
-    <div style="font-family: system-ui, -apple-system, sans-serif;">
+    <div style="font-family: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', sans-serif;">
       <button id="cs-copy-btn" style="
-          background:#3182ce; color:#fff; border:none; border-radius:8px;
-          padding:8px 16px; font-size:14px; cursor:pointer; margin-bottom:8px;">
+          background:linear-gradient(92deg,#7C6BFF,#5A73FF); color:#fff; border:none;
+          border-radius:10px; padding:9px 18px; font-size:14px; font-weight:600;
+          cursor:pointer; margin-bottom:8px;">
         {btn_label}
       </button>
-      <span id="cs-copy-msg" style="margin-left:10px; font-size:13px; color:#38a169;"></span>
+      <span id="cs-copy-msg" style="margin-left:10px; font-size:13px; color:#2ECC8F;"></span>
       <textarea id="cs-log-text" style="
-          width:100%; height:240px; margin-top:6px; font-family:monospace;
-          font-size:12px; border:1px solid #d0d7e6; border-radius:8px;
-          padding:10px; background:#f7fafc; color:#1a202c;"
+          width:100%; height:240px; margin-top:6px; font-family:ui-monospace,Menlo,Consolas,monospace;
+          font-size:12px; border:1px solid #232D3D; border-radius:10px;
+          padding:12px; background:#141A24; color:#E8EDF5;"
           readonly>{__import__('html').escape(full_log)}</textarea>
       <script>
         const csLog = {payload};
@@ -406,16 +693,16 @@ def render_copy_logs(full_log: str):
               csArea.select();
               document.execCommand("copy");
             }}
-            csMsg.style.color = "#38a169";
+            csMsg.style.color = "#2ECC8F";
             csMsg.textContent = {_json.dumps(copied)};
           }} catch (e) {{
             try {{
               csArea.select();
               document.execCommand("copy");
-              csMsg.style.color = "#38a169";
+              csMsg.style.color = "#2ECC8F";
               csMsg.textContent = {_json.dumps(copied)};
             }} catch (e2) {{
-              csMsg.style.color = "#d69e2e";
+              csMsg.style.color = "#F5B942";
               csMsg.textContent = {_json.dumps(failed)};
             }}
           }}
@@ -425,6 +712,9 @@ def render_copy_logs(full_log: str):
     """
     st.components.v1.html(html, height=340)
 
+
+if not (investigate and address):
+    render_empty_state()
 
 if investigate and address:
     goal = custom_goal.strip() or DEFAULT_GOAL.format(address=address)
@@ -471,9 +761,12 @@ if investigate and address:
                             if c and getattr(m, "type", "") == "ai":
                                 st.info(f"🧭 **{t('plan_prefix')}:**\n\n{c}")
                     elif node_name in ("reflect", "replan"):
-                        st.markdown(f"---\n{emoji} **{label}** "
-                                    f"({t('step_word')} {case.step}, "
-                                    f"{t('risk_word')}≈{case.risk_estimate:.2f})")
+                        st.markdown(
+                            f"<div class='cs-phase'>{emoji} {label} · "
+                            f"{t('step_word')} {case.step} · "
+                            f"{t('risk_word')}≈{case.risk_estimate:.2f}</div>",
+                            unsafe_allow_html=True,
+                        )
         run_ok = True
         status.update(label=t("status_done", step=case.step,
                               secs=int(time.time() - t0)),
@@ -501,24 +794,23 @@ if investigate and address:
                         f'<h1>{overall:.2f}</h1></div>', unsafe_allow_html=True)
         with m2:
             st.markdown(f'<div class="metric-card"><h3>{t("card_steps")}</h3>'
-                        f'<h1 style="color:#805ad5">{case.step}</h1></div>', unsafe_allow_html=True)
+                        f'<h1 style="color:#7C6BFF">{case.step}</h1></div>', unsafe_allow_html=True)
         with m3:
             st.markdown(f'<div class="metric-card"><h3>{t("card_addrs")}</h3>'
-                        f'<h1 style="color:#3182ce">{len(case.visited)}</h1></div>', unsafe_allow_html=True)
+                        f'<h1 style="color:#22D3EE">{len(case.visited)}</h1></div>', unsafe_allow_html=True)
         with m4:
             st.markdown(f'<div class="metric-card {risk_class}"><h3>{t("card_verdict")}</h3>'
                         f'<h1>{risk_label}</h1></div>', unsafe_allow_html=True)
 
-        bar_color = "#f85149" if overall >= 0.6 else ("#d29922" if overall >= 0.3 else "#3fb950")
+        bar_color = ("linear-gradient(90deg,#FF9A6B,#FF5C6C)" if overall >= 0.6 else
+                     "linear-gradient(90deg,#FFD98A,#F5B942)" if overall >= 0.3 else
+                     "linear-gradient(90deg,#22D3EE,#2ECC8F)")
         st.markdown(f"""
-        <div style="margin: 12px 0 20px 0">
-            <div class="score-bar-bg"><div class="score-bar-fill"
-                style="width:{overall*100}%; background:{bar_color}"></div></div>
-            <div style="display:flex; justify-content:space-between; color:#718096; font-size:12px">
-                <span>{t("bar_safe")}</span><span>{t("bar_threshold")}</span><span>{t("bar_danger")}</span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+<div style="margin:18px 0 24px 0">
+<div class="score-bar-bg"><div class="score-bar-fill" style="width:{overall*100:.1f}%; background:{bar_color}"></div></div>
+<div class="cs-bar-legend"><span>{t("bar_safe")}</span><span>{t("bar_threshold")}</span><span>{t("bar_danger")}</span></div>
+</div>
+""", unsafe_allow_html=True)
 
         # ── Long-horizon run record ──
         st.markdown(f"### {t('run_record')}")
@@ -605,9 +897,7 @@ if investigate and address:
 # ── Footer ──
 st.markdown("---")
 st.markdown(
-    "<div style='text-align:center; color:#718096'>"
-    "ChainScope v2.0 | LLM Agent (LangGraph) + GB-TGAD + EAS Sepolia | "
-    "<a href='https://github.com/SKYEJT/ChainScope' style='color:#3182ce'>GitHub</a>"
-    "</div>",
+    "<div class='cs-footer'>ChainScope v2.0 &nbsp;·&nbsp; LangGraph agent + GB-TGAD + EAS Sepolia "
+    "&nbsp;·&nbsp; <a href='https://github.com/SKYEJT/ChainScope'>GitHub</a></div>",
     unsafe_allow_html=True,
 )

@@ -13,15 +13,36 @@ from pathlib import Path
 
 import plotly.graph_objects as go
 
-# node -> (label, color)
+# node -> (label, color). Colors match the dark UI palette in app.py.
 NODE_STYLE = {
-    "plan": ("Plan", "#3182ce"),
-    "act": ("Act", "#805ad5"),
-    "observe": ("Observe", "#38a169"),
-    "reflect": ("Reflect", "#d69e2e"),
-    "replan": ("Replan", "#e53e3e"),
-    "report": ("Report", "#319795"),
+    "plan": ("Plan", "#5B8DEF"),
+    "act": ("Act", "#7C6BFF"),
+    "observe": ("Observe", "#2ECC8F"),
+    "reflect": ("Reflect", "#F5B942"),
+    "replan": ("Replan", "#FF5C6C"),
+    "report": ("Report", "#22D3EE"),
 }
+
+_AXIS = dict(gridcolor="#232D3D", zerolinecolor="#232D3D", linecolor="#232D3D")
+
+
+def _style_dark(fig: go.Figure) -> go.Figure:
+    """Make a chart sit on the dark UI instead of glaring off it.
+
+    Applied after the per-chart update_layout: plotly rejects a container and
+    its magic-underscore child (title / title_font) in the same call.
+    """
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="#93A1B5", size=12),
+        title_font=dict(color="#E8EDF5", size=15),
+        hoverlabel=dict(bgcolor="#1A2230", bordercolor="#35435C",
+                        font=dict(color="#E8EDF5", size=12)),
+    )
+    fig.update_xaxes(**_AXIS)
+    fig.update_yaxes(**_AXIS)
+    return fig
 
 
 def tool_call_rows(case) -> list[dict]:
@@ -62,7 +83,7 @@ def plot_timeline(case, lang: str = "en") -> go.Figure:
             x=[s.step for s in pts],
             y=[label] * len(pts),
             mode="markers",
-            marker=dict(size=12, color=color, line=dict(width=1, color="white")),
+            marker=dict(size=12, color=color, line=dict(width=1, color="#0A0C12")),
             name=label,
             text=[s.content[:160] for s in pts],
             hovertemplate="step %{x}<br>%{text}<extra></extra>",
@@ -70,12 +91,13 @@ def plot_timeline(case, lang: str = "en") -> go.Figure:
     fig.update_layout(
         title=_ct("timeline_title", lang),
         xaxis_title=_ct("step", lang),
-        yaxis=dict(categoryorder="array", categoryarray=[NODE_STYLE[n][0] for n in lanes]),
         height=300,
         margin=dict(l=10, r=10, t=40, b=10),
         showlegend=False,
-        plot_bgcolor="#f8f9fa",
     )
+    _style_dark(fig)
+    fig.update_yaxes(categoryorder="array",
+                     categoryarray=[NODE_STYLE[n][0] for n in lanes])
     return fig
 
 
@@ -92,16 +114,15 @@ def plot_tool_usage(case, lang: str = "en") -> go.Figure:
         x=list(counts.values()),
         y=list(counts.keys()),
         orientation="h",
-        marker_color="#805ad5",
+        marker_color="#7C6BFF",
     ))
     fig.update_layout(
         title=_ct("tool_usage_title", lang),
         xaxis_title=_ct("calls", lang),
         height=max(220, 26 * len(counts) + 60),
         margin=dict(l=10, r=10, t=40, b=10),
-        plot_bgcolor="#f8f9fa",
     )
-    return fig
+    return _style_dark(fig)
 
 
 def plan_text(case) -> str:
@@ -142,18 +163,30 @@ def export_run_record(case, directory: Path | str = "data/run_records") -> dict:
     )
     html = f"""<!doctype html><meta charset="utf-8">
 <title>ChainScope Run Record — {case.target}</title>
-<body style="font-family:system-ui;max-width:1000px;margin:24px auto;color:#1a202c">
+<style>
+body {{ font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", sans-serif;
+       max-width: 1000px; margin: 24px auto; padding: 0 20px;
+       background: #0A0C12; color: #E8EDF5; }}
+h1, h2 {{ letter-spacing: -.02em; }}
+h2 {{ margin-top: 34px; border-bottom: 1px solid #232D3D; padding-bottom: 8px; }}
+pre {{ white-space: pre-wrap; background: #141A24; border: 1px solid #232D3D;
+      padding: 14px; border-radius: 10px; color: #E8EDF5; }}
+table {{ border-collapse: collapse; width: 100%; font-size: 13px; }}
+th, td {{ border: 1px solid #232D3D; padding: 7px 9px; text-align: left;
+         vertical-align: top; }}
+th {{ background: #1A2230; }}
+</style>
+<body>
 <h1>ChainScope Run Record</h1>
 <p><b>Target:</b> {case.target}<br>
 <b>Final risk:</b> {case.risk_estimate:.2f} &nbsp; <b>Steps:</b> {case.step} &nbsp;
 <b>Addresses investigated:</b> {len(case.visited)}</p>
-<h2>Plan</h2><pre style="white-space:pre-wrap;background:#f7fafc;padding:12px;border-radius:8px">{_esc(plan_text(case))}</pre>
+<h2>Plan</h2><pre>{_esc(plan_text(case))}</pre>
 <h2>Timeline</h2>{timeline}
 <h2>Tool Usage</h2>{usage}
-<h2>Verdict</h2><pre style="white-space:pre-wrap;background:#f7fafc;padding:12px;border-radius:8px">{_esc(case.verdict)}</pre>
+<h2>Verdict</h2><pre>{_esc(case.verdict)}</pre>
 <h2>Iteration Log</h2>
-<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%">
-<tr><th>Step</th><th>Node</th><th>Content</th></tr>{rows}</table>
+<table><tr><th>Step</th><th>Node</th><th>Content</th></tr>{rows}</table>
 </body>"""
     html_path = directory / f"{base}.html"
     html_path.write_text(html)

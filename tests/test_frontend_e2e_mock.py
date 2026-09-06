@@ -17,6 +17,7 @@ evidence block) is patched to fail, so app.py's try/except skips it offline.
 Run:
     python tests/test_frontend_e2e_mock.py
 """
+import os
 import sys
 import warnings
 from unittest.mock import patch
@@ -25,6 +26,9 @@ warnings.filterwarnings("ignore")
 ROOT = str(__import__("pathlib").Path(__file__).resolve().parent.parent)
 sys.path.insert(0, ROOT)
 APP = ROOT + "/app.py"
+# Keep the optional access gate out of the way even when the local .env sets
+# APP_PASSWORD (load_dotenv never overrides a variable that already exists).
+os.environ.setdefault("APP_PASSWORD", "")
 
 from langchain_core.messages import AIMessage, ToolMessage  # noqa: E402
 from streamlit.testing.v1 import AppTest  # noqa: E402
