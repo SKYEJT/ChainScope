@@ -5,7 +5,9 @@ results, reflects/self-corrects across many steps, and concludes with an on-chai
 attestation. The investigation is NOT a fixed pipeline — every action is chosen
 by the model at runtime, and the long-horizon run is streamed live.
 """
+import hmac
 import math
+import os
 import time
 from chainscope.tools.chainscout import default_scout
 
@@ -20,6 +22,42 @@ from chainscope.utils import run_trace
 
 st.set_page_config(page_title="ChainScope", layout="wide", page_icon="🔍",
                    initial_sidebar_state="expanded")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Access gate for public deployments (Streamlit Community Cloud etc.).
+# Every investigation burns GLM-5.1 tokens, so a public URL must not be open to
+# anyone. The gate is active only when APP_PASSWORD is provided (as an env var
+# or in Streamlit secrets); local runs without it behave exactly as before.
+# ─────────────────────────────────────────────────────────────────────────────
+def _expected_password() -> str:
+    pwd = os.environ.get("APP_PASSWORD", "")
+    if pwd:
+        return pwd
+    try:  # no secrets.toml on a dev box -> keep the app open
+        return str(st.secrets.get("APP_PASSWORD", "") or "")
+    except Exception:
+        return ""
+
+
+def require_access() -> None:
+    expected = _expected_password()
+    if not expected or st.session_state.get("_access_granted"):
+        return
+    st.markdown("# 🔍 ChainScope")
+    st.caption("This deployment is password protected · 本站点需要访问密码")
+    with st.form("access_gate"):
+        supplied = st.text_input("Access password / 访问密码", type="password")
+        submitted = st.form_submit_button("Enter / 进入")
+    if submitted:
+        if hmac.compare_digest(supplied.encode(), expected.encode()):
+            st.session_state["_access_granted"] = True
+            st.rerun()
+        st.error("Wrong password / 密码错误")
+    st.stop()
+
+
+require_access()
 
 # ─────────────────────────────────────────────────────────────────────────────
 # i18n: every user-visible string lives here as {key: {"en": ..., "cn": ...}}.
