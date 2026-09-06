@@ -13,21 +13,30 @@ from pathlib import Path
 
 import plotly.graph_objects as go
 
-# node -> (label, color). Colors match the dark UI palette in app.py.
+# node -> (label, color). A restrained palette that matches the monochrome UI:
+# the model's own moves are light, data is blue, corrections are warm.
 NODE_STYLE = {
-    "plan": ("Plan", "#5B8DEF"),
-    "act": ("Act", "#7C6BFF"),
-    "observe": ("Observe", "#2ECC8F"),
-    "reflect": ("Reflect", "#F5B942"),
-    "replan": ("Replan", "#FF5C6C"),
-    "report": ("Report", "#22D3EE"),
+    "plan": ("Plan", "#8A93A6"),
+    "act": ("Act", "#E8EAEE"),
+    "observe": ("Observe", "#7FB6FF"),
+    "reflect": ("Reflect", "#E3AE5C"),
+    "replan": ("Replan", "#F0716B"),
+    "report": ("Report", "#55CFA4"),
 }
 
-_AXIS = dict(gridcolor="#232D3D", zerolinecolor="#232D3D", linecolor="#232D3D")
+_BG = "#0B0C0F"
+_TEXT = "#E8EAEE"
+_MUTED = "#8A93A6"
+_FAINT = "#6A7280"
+_LINE = "#1C1F26"
+_FONT = "'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+_AXIS = dict(gridcolor=_LINE, zerolinecolor=_LINE, linecolor=_LINE, showline=False,
+             tickfont=dict(color=_FAINT, size=11, family=_FONT), title_font=dict(color=_FAINT, size=11))
 
 
 def _style_dark(fig: go.Figure) -> go.Figure:
-    """Make a chart sit on the dark UI instead of glaring off it.
+    """Make a chart sit quietly on the dark UI: transparent paper, hairline grid,
+    small mono type, a muted left-aligned title.
 
     Applied after the per-chart update_layout: plotly rejects a container and
     its magic-underscore child (title / title_font) in the same call.
@@ -35,10 +44,12 @@ def _style_dark(fig: go.Figure) -> go.Figure:
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(color="#93A1B5", size=12),
-        title_font=dict(color="#E8EDF5", size=15),
-        hoverlabel=dict(bgcolor="#1A2230", bordercolor="#35435C",
-                        font=dict(color="#E8EDF5", size=12)),
+        font=dict(color=_MUTED, size=11, family=_FONT),
+        title_font=dict(color=_MUTED, size=12, family=_FONT),
+        title_x=0,
+        title_xanchor="left",
+        hoverlabel=dict(bgcolor="#191C22", bordercolor="#30343E",
+                        font=dict(color=_TEXT, size=12, family=_FONT)),
     )
     fig.update_xaxes(**_AXIS)
     fig.update_yaxes(**_AXIS)
@@ -59,9 +70,9 @@ def tool_call_rows(case) -> list[dict]:
 
 # Localized chart strings: key -> {lang: text}
 _CHART_TEXT = {
-    "timeline_title": {"en": "Long-Horizon Run Timeline", "cn": "长程运行时间线"},
-    "step": {"en": "Step", "cn": "步骤"},
-    "tool_usage_title": {"en": "Tool Usage", "cn": "工具调用统计"},
+    "timeline_title": {"en": "RUN TIMELINE", "cn": "运行时间线"},
+    "step": {"en": "step", "cn": "步骤"},
+    "tool_usage_title": {"en": "TOOL USAGE", "cn": "工具调用统计"},
     "calls": {"en": "calls", "cn": "调用次数"},
 }
 
@@ -83,7 +94,7 @@ def plot_timeline(case, lang: str = "en") -> go.Figure:
             x=[s.step for s in pts],
             y=[label] * len(pts),
             mode="markers",
-            marker=dict(size=12, color=color, line=dict(width=1, color="#0A0C12")),
+            marker=dict(size=10, color=color, line=dict(width=0)),
             name=label,
             text=[s.content[:160] for s in pts],
             hovertemplate="step %{x}<br>%{text}<extra></extra>",
@@ -92,12 +103,14 @@ def plot_timeline(case, lang: str = "en") -> go.Figure:
         title=_ct("timeline_title", lang),
         xaxis_title=_ct("step", lang),
         height=300,
-        margin=dict(l=10, r=10, t=40, b=10),
+        margin=dict(l=10, r=10, t=44, b=10),
         showlegend=False,
     )
     _style_dark(fig)
     fig.update_yaxes(categoryorder="array",
-                     categoryarray=[NODE_STYLE[n][0] for n in lanes])
+                     categoryarray=[NODE_STYLE[n][0] for n in lanes],
+                     showgrid=False, tickfont=dict(color=_MUTED, size=12, family=_FONT))
+    fig.update_xaxes(dtick=1 if case.step <= 20 else None)
     return fig
 
 
@@ -114,15 +127,22 @@ def plot_tool_usage(case, lang: str = "en") -> go.Figure:
         x=list(counts.values()),
         y=list(counts.keys()),
         orientation="h",
-        marker_color="#7C6BFF",
+        marker_color="#C9CDD4",
+        width=0.5,
+        hovertemplate="%{y}: %{x}<extra></extra>",
     ))
     fig.update_layout(
         title=_ct("tool_usage_title", lang),
         xaxis_title=_ct("calls", lang),
         height=max(220, 26 * len(counts) + 60),
-        margin=dict(l=10, r=10, t=40, b=10),
+        margin=dict(l=10, r=10, t=44, b=10),
+        bargap=0.35,
     )
-    return _style_dark(fig)
+    _style_dark(fig)
+    fig.update_yaxes(autorange="reversed", showgrid=False,
+                     tickfont=dict(color=_MUTED, size=12, family=_FONT))
+    fig.update_xaxes(dtick=1)
+    return fig
 
 
 def plan_text(case) -> str:
@@ -164,28 +184,31 @@ def export_run_record(case, directory: Path | str = "data/run_records") -> dict:
     html = f"""<!doctype html><meta charset="utf-8">
 <title>ChainScope Run Record — {case.target}</title>
 <style>
-body {{ font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", sans-serif;
-       max-width: 1000px; margin: 24px auto; padding: 0 20px;
-       background: #0A0C12; color: #E8EDF5; }}
-h1, h2 {{ letter-spacing: -.02em; }}
-h2 {{ margin-top: 34px; border-bottom: 1px solid #232D3D; padding-bottom: 8px; }}
-pre {{ white-space: pre-wrap; background: #141A24; border: 1px solid #232D3D;
-      padding: 14px; border-radius: 10px; color: #E8EDF5; }}
+body {{ font-family: Geist, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+       max-width: 1000px; margin: 40px auto; padding: 0 24px;
+       background: {_BG}; color: {_TEXT}; line-height: 1.55; }}
+h1, h2 {{ letter-spacing: -.02em; font-weight: 600; }}
+h1 {{ font-size: 30px; margin: 0 0 6px 0; }}
+h2 {{ font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: {_FAINT};
+      margin-top: 40px; border-top: 1px solid #23262E; padding-top: 18px; }}
+.meta {{ color: {_MUTED}; font-family: {_FONT}; font-size: 13px; }}
+pre {{ white-space: pre-wrap; background: #13151A; border: 1px solid #23262E;
+      padding: 14px 16px; border-radius: 8px; color: {_TEXT}; font-family: {_FONT}; font-size: 12.5px; }}
 table {{ border-collapse: collapse; width: 100%; font-size: 13px; }}
-th, td {{ border: 1px solid #232D3D; padding: 7px 9px; text-align: left;
-         vertical-align: top; }}
-th {{ background: #1A2230; }}
+th, td {{ border-bottom: 1px solid #23262E; padding: 8px 10px; text-align: left; vertical-align: top; }}
+th {{ color: {_FAINT}; font-weight: 500; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }}
+td:first-child, td:nth-child(2) {{ font-family: {_FONT}; color: {_MUTED}; white-space: nowrap; }}
 </style>
 <body>
 <h1>ChainScope Run Record</h1>
-<p><b>Target:</b> {case.target}<br>
-<b>Final risk:</b> {case.risk_estimate:.2f} &nbsp; <b>Steps:</b> {case.step} &nbsp;
-<b>Addresses investigated:</b> {len(case.visited)}</p>
+<p class="meta">Target {case.target}<br>
+Final risk {case.risk_estimate:.2f} &nbsp;·&nbsp; Steps {case.step} &nbsp;·&nbsp;
+Addresses investigated {len(case.visited)}</p>
 <h2>Plan</h2><pre>{_esc(plan_text(case))}</pre>
 <h2>Timeline</h2>{timeline}
-<h2>Tool Usage</h2>{usage}
+<h2>Tool usage</h2>{usage}
 <h2>Verdict</h2><pre>{_esc(case.verdict)}</pre>
-<h2>Iteration Log</h2>
+<h2>Iteration log</h2>
 <table><tr><th>Step</th><th>Node</th><th>Content</th></tr>{rows}</table>
 </body>"""
     html_path = directory / f"{base}.html"

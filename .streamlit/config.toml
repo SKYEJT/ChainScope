@@ -2,14 +2,73 @@
 headless = true
 runOnSave = false
 fileWatcherType = "none"
+# Serves ./static (the self-hosted typefaces below) at /app/static/...
+enableStaticServing = true
 
 [browser]
 gatherUsageStats = false
 
+# ── Typefaces: Geist Sans / Geist Mono (SIL OFL 1.1, see static/fonts/LICENSE-Geist.txt).
+# Self-hosted so the UI renders identically everywhere - no third-party font CDN.
+# CJK text falls back to the system font stack declared in theme.font.
+[[theme.fontFaces]]
+family = "Geist"
+url = "app/static/fonts/Geist-Variable.woff2"
+weight = "100 900"
+style = "normal"
+
+[[theme.fontFaces]]
+family = "Geist Mono"
+url = "app/static/fonts/GeistMono-Variable.woff2"
+weight = "100 900"
+style = "normal"
+
+# ── "Monochrome premium": near-black canvas, hairline rules, a single light
+# primary, large type. Semantic colour is spent only on risk + information.
 [theme]
 base = "dark"
-primaryColor = "#7C6BFF"
-backgroundColor = "#0A0C12"
-secondaryBackgroundColor = "#151B26"
-textColor = "#E8EDF5"
-font = "sans serif"
+font = "Geist, -apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC', sans-serif"
+headingFont = "Geist, -apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC', sans-serif"
+codeFont = "'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+baseFontSize = 15
+baseFontWeight = 400
+headingFontWeights = [600, 600, 600, 600, 600, 600]
+headingFontSizes = ["2.6rem", "1.7rem", "1.25rem", "1.05rem", "0.95rem", "0.85rem"]
+codeFontSize = "0.82rem"
+
+primaryColor = "#DFE2E8"
+backgroundColor = "#0B0C0F"
+secondaryBackgroundColor = "#13151A"
+textColor = "#E8EAEE"
+borderColor = "#23262E"
+dataframeBorderColor = "#23262E"
+dataframeHeaderBackgroundColor = "#13151A"
+showWidgetBorder = true
+showSidebarBorder = true
+baseRadius = "8px"
+buttonRadius = "8px"
+linkColor = "#B7BDC8"
+linkUnderline = true
+codeTextColor = "#D2D6DE"
+codeBackgroundColor = "#13151A"
+
+# Flat, desaturated semantic palette (st.info / success / warning / error, badges).
+redColor = "#F0716B"
+orangeColor = "#E3AE5C"
+yellowColor = "#E0CB6B"
+greenColor = "#55CFA4"
+blueColor = "#7FB6FF"
+violetColor = "#A99BFF"
+grayColor = "#6C7380"
+redBackgroundColor = "#1A1214"
+orangeBackgroundColor = "#1A1611"
+yellowBackgroundColor = "#1A1811"
+greenBackgroundColor = "#101A17"
+blueBackgroundColor = "#11161E"
+violetBackgroundColor = "#15131E"
+grayBackgroundColor = "#13151A"
+chartCategoricalColors = ["#E8EAEE", "#7FB6FF", "#55CFA4", "#E3AE5C", "#F0716B", "#A99BFF", "#8A93A6"]
+
+[theme.sidebar]
+backgroundColor = "#0B0C0F"
+secondaryBackgroundColor = "#13151A"
