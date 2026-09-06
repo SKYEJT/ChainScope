@@ -13,25 +13,34 @@ CACHE_DIR = DATA_DIR / "cache"
 # ── API Keys ──
 ALCHEMY_API_KEY = os.getenv("ALCHEMY_API_KEY", "")
 ETHERSCAN_API_KEY = os.getenv("ETHERSCAN_API_KEY", "")
-ZAI_API_KEY = os.getenv("ZAI_API_KEY", "")
-ZAI_BASE_URL = os.getenv("ZAI_BASE_URL", "https://open.bigmodel.cn/api/paas/v4")
-# ChainScope REQUIRES GLM-5.1 (Z.AI track rule: the agent's core long-horizon task
-# must be driven by GLM-5.1). Any other model is rejected at startup — see below.
-REQUIRED_MODEL = "glm-5.1"
-ZAI_MODEL = os.getenv("ZAI_MODEL", REQUIRED_MODEL).strip()
+
+# ── LLM (any OpenAI-compatible chat endpoint with tool calling) ──
+# ChainScope was built for the Z.AI hackathon track on GLM-5.1 and used to hard-
+# reject every other model. Post-hackathon the model is a deployment choice:
+#   LLM_API_KEY / LLM_BASE_URL / LLM_MODEL   canonical names
+#   ZAI_API_KEY / ZAI_BASE_URL / ZAI_MODEL   legacy names, still honoured as fallbacks
+# Defaults reproduce the original GLM-5.1 setup, so an untouched .env behaves as before.
+# The agent relies on function calling, so the model must support OpenAI-style tools
+# (GLM-5.x, deepseek-v4-flash / deepseek-v4-pro, gpt-4.x, qwen-plus, ...).
+DEFAULT_MODEL = "glm-5.1"
+LLM_API_KEY = os.getenv("LLM_API_KEY") or os.getenv("ZAI_API_KEY", "")
+LLM_BASE_URL = (os.getenv("LLM_BASE_URL") or os.getenv("ZAI_BASE_URL")
+                or "https://open.bigmodel.cn/api/paas/v4")
+LLM_MODEL = (os.getenv("LLM_MODEL") or os.getenv("ZAI_MODEL") or DEFAULT_MODEL).strip()
+
+# Backwards-compatible aliases for code that still imports the old names.
+ZAI_API_KEY, ZAI_BASE_URL, ZAI_MODEL = LLM_API_KEY, LLM_BASE_URL, LLM_MODEL
 
 
-def require_glm_5_1(model: str | None = None) -> str:
-    """Enforce GLM-5.1. Raise RuntimeError if the configured/requested model is not
-    glm-5.1, so the app fails fast instead of silently running on a weaker model."""
-    chosen = model if model is not None else ZAI_MODEL
-    if (chosen or "").strip().lower() != REQUIRED_MODEL:
+def resolve_model(model: str | None = None) -> str:
+    """Return the model name to use: an explicit request wins, else LLM_MODEL.
+    Fail fast on an empty name so a misconfigured deployment does not start."""
+    chosen = (model if model is not None else LLM_MODEL or "").strip()
+    if not chosen:
         raise RuntimeError(
-            f"ChainScope requires model '{REQUIRED_MODEL}', but got '{chosen}'. "
-            f"Set ZAI_MODEL={REQUIRED_MODEL} in .env (Z.AI track rule: the agent "
-            f"must be driven by {REQUIRED_MODEL})."
+            "No LLM model configured. Set LLM_MODEL (and LLM_API_KEY / LLM_BASE_URL) in .env."
         )
-    return REQUIRED_MODEL
+    return chosen
 
 # ── Ethereum ──
 SEPOLIA_RPC_URL = os.getenv(

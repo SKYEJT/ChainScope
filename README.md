@@ -42,7 +42,7 @@ State        : CaseFile — persistent investigation notebook (hypotheses, evide
                visited addresses, fund paths, risk estimate, full iteration log)
 ```
 
-**GLM-5.1 call site**: `chainscope/llm.py` — the only LLM entry point. `chainscope/config.py` enforces `glm-5.1` at startup (`require_glm_5_1()` raises on any other model). Agent core: `chainscope/agent/graph.py`.
+**LLM call site**: `chainscope/llm.py` — the only LLM entry point. The hackathon build was locked to GLM-5.1; the model is now chosen in `.env` via `LLM_MODEL` / `LLM_BASE_URL` / `LLM_API_KEY` (any OpenAI-compatible endpoint with tool calling, e.g. `glm-5.1`, `deepseek-v4-flash`, `deepseek-v4-pro`; defaults reproduce the GLM-5.1 setup). Agent core: `chainscope/agent/graph.py`.
 
 ## Quick Start
 
@@ -58,7 +58,7 @@ pip install -e .
 
 # 3. Configure API keys
 cp .env.example .env
-# Fill in: ZAI_API_KEY (GLM-5.1), ETHERSCAN_API_KEY (optional fallback),
+# Fill in: LLM_API_KEY / LLM_BASE_URL / LLM_MODEL (e.g. DeepSeek or GLM), ETHERSCAN_API_KEY (optional fallback),
 #          WALLET_PRIVATE_KEY (dedicated Sepolia testnet wallet, optional — without it
 #          attestation falls back to local storage and the investigation still completes)
 

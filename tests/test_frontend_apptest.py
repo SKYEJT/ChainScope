@@ -13,6 +13,7 @@ Alchemy/Etherscan/Z.AI and the live agent. That belongs to the manual E2E layer.
 Run:
     python tests/test_frontend_apptest.py
 """
+import os
 import sys
 import warnings
 
@@ -20,8 +21,12 @@ warnings.filterwarnings("ignore")
 ROOT = str(__import__("pathlib").Path(__file__).resolve().parent.parent)
 sys.path.insert(0, ROOT)
 APP = ROOT + "/app.py"
+# Keep the optional access gate out of the way even when the local .env sets
+# APP_PASSWORD (load_dotenv never overrides a variable that already exists).
+os.environ.setdefault("APP_PASSWORD", "")
 
 from streamlit.testing.v1 import AppTest  # noqa: E402
+from chainscope import config as cs_config  # noqa: E402
 
 PASS: list = []
 FAIL: list = []
@@ -44,8 +49,9 @@ check("initial run raises no exception", not at.exception, str(at.exception))
 
 md = all_markdown(at)
 check("renders 'ChainScope' branding", "ChainScope" in md)
-check("model selectbox present w/ glm-4.7 default",
-      len(at.selectbox) >= 1 and "glm-4.7" in list(at.selectbox[0].options))
+check("model selectbox shows the configured LLM_MODEL",
+      len(at.selectbox) >= 1 and list(at.selectbox[0].options) == [cs_config.LLM_MODEL],
+      f"options={list(at.selectbox[0].options) if at.selectbox else None}")
 check("time-window number_input present", len(at.number_input) >= 1)
 check("max-steps + reflect sliders present", len(at.slider) >= 2)
 check("address text_input present", len(at.text_input) >= 1)
@@ -58,7 +64,7 @@ at.radio[0].set_value("中文").run()
 check("language switch raises no exception", not at.exception, str(at.exception))
 md_cn = all_markdown(at)
 check("localized Chinese string appears after switch",
-      ("自主链上调查" in md_cn) or ("由 GLM 驱动" in md_cn), md_cn[:160])
+      ("自主链上调查" in md_cn) or ("由 LLM 驱动" in md_cn), md_cn[:160])
 
 
 # ── enter an address (without launching the agent) ───────────────────────────

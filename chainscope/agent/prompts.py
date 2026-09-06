@@ -13,7 +13,7 @@ DEFAULT_GOAL = (
     "risk verdict, and publish an on-chain attestation of your findings."
 )
 
-SYSTEM_PROMPT = """You are ChainScope, an autonomous on-chain investigator powered by GLM.
+SYSTEM_PROMPT = """You are ChainScope, an autonomous on-chain investigator powered by a large language model.
 
 You are NOT a fixed pipeline. You decide what to do next based on what you learn.
 You run a long-horizon investigation: plan, act, observe, reflect, and SELF-CORRECT

@@ -1,6 +1,6 @@
 """ChainScope - Autonomous On-Chain Investigation Agent (Streamlit Frontend).
 
-This UI drives the real LangGraph agent: GLM plans, calls tools, observes
+This UI drives the real LangGraph agent: the LLM plans, calls tools, observes
 results, reflects/self-corrects across many steps, and concludes with an on-chain
 attestation. The investigation is NOT a fixed pipeline — every action is chosen
 by the model at runtime, and the long-horizon run is streamed live.
@@ -26,7 +26,7 @@ st.set_page_config(page_title="ChainScope", layout="wide", page_icon="🔍",
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Access gate for public deployments (Streamlit Community Cloud etc.).
-# Every investigation burns GLM-5.1 tokens, so a public URL must not be open to
+# Every investigation burns paid LLM tokens, so a public URL must not be open to
 # anyone. The gate is active only when APP_PASSWORD is provided (as an env var
 # or in Streamlit secrets); local runs without it behave exactly as before.
 # ─────────────────────────────────────────────────────────────────────────────
@@ -65,9 +65,9 @@ require_access()
 TRANSLATIONS = {
     "tagline":            {"en": "Autonomous On-Chain Investigation Agent",
                            "cn": "自主链上调查智能体"},
-    "model_label":        {"en": "🤖 GLM Model", "cn": "🤖 GLM 模型"},
-    "model_help":         {"en": "Locked to GLM-5.1 (Z.AI track requirement); other models are rejected.",
-                           "cn": "已锁定 GLM-5.1（Z.AI 赛道要求）；其他模型会被拒绝。"},
+    "model_label":        {"en": "🤖 LLM Model", "cn": "🤖 LLM 模型"},
+    "model_help":         {"en": "Set by LLM_MODEL / LLM_BASE_URL / LLM_API_KEY in .env (any OpenAI-compatible endpoint with tool calling). Change .env and restart to switch.",
+                           "cn": "由 .env 中的 LLM_MODEL / LLM_BASE_URL / LLM_API_KEY 决定（任何支持工具调用的 OpenAI 兼容接口）。修改 .env 并重启即可切换。"},
     "window_label":       {"en": "⏱️ Time Window (days)", "cn": "⏱️ 时间窗口（天）"},
     "window_help":        {"en": "How far back (in days) to pull on-chain transactions. No 90-day cap (up to 6000); larger windows pull deeper history and the graph is auto-capped to stay fast. Tip: click 'Probe activity span' first so the window actually captures this address's transactions — otherwise the graph can be empty.",
                            "cn": "向前回溯多少天的链上交易（已取消 90 天上限，最大 6000）；窗口越大回溯的历史越多，图会自动裁剪到上限以保持流畅。建议先点下方“探测交易活跃区间”，确保窗口能覆盖到该地址的交易，否则图可能为空。"},
@@ -100,30 +100,30 @@ TRANSLATIONS = {
     "autonomy_loop":      {"en": "Autonomy Loop", "cn": "自主循环"},
     "loop_steps":         {"en": "PLAN → ACT → OBSERVE → REFLECT → REPLAN",
                            "cn": "规划 → 行动 → 观察 → 反思 → 重规划"},
-    "loop_caption":       {"en": "Every action is chosen by GLM at runtime.",
-                           "cn": "每一步行动都由 GLM 在运行时自主决定。"},
+    "loop_caption":       {"en": "Every action is chosen by the LLM at runtime.",
+                           "cn": "每一步行动都由 LLM 在运行时自主决定。"},
     "about":              {"en": "ℹ️ About", "cn": "ℹ️ 关于"},
-    "about_caption":      {"en": "GLM agent + GB-TGAD + EAS (Sepolia)",
-                           "cn": "GLM 智能体 + GB-TGAD + EAS（Sepolia）"},
-    "header_sub":         {"en": "GLM-driven autonomous on-chain investigation",
-                           "cn": "由 GLM 驱动的自主链上调查"},
+    "about_caption":      {"en": "LLM agent + GB-TGAD + EAS (Sepolia)",
+                           "cn": "LLM 智能体 + GB-TGAD + EAS（Sepolia）"},
+    "header_sub":         {"en": "LLM-driven autonomous on-chain investigation",
+                           "cn": "由 LLM 驱动的自主链上调查"},
     "address_placeholder": {"en": "0x...", "cn": "0x..."},
     "investigate_btn":    {"en": "🚀 Investigate", "cn": "🚀 开始调查"},
     "goal_label":         {"en": "Investigation goal (optional)", "cn": "调查目标（可选）"},
     "goal_placeholder":   {"en": "Leave blank for default: detect illicit activity & attest on-chain",
                            "cn": "留空则使用默认目标：检测非法活动并在链上存证"},
     "live_stream":        {"en": "🛰️ Live Investigation Stream", "cn": "🛰️ 实时调查流"},
-    "spinner":            {"en": "GLM is investigating autonomously...",
-                           "cn": "GLM 正在自主调查……"},
-    "status_starting":    {"en": "🚀 Starting… connecting to GLM and planning (first step can take 10-30s)",
-                           "cn": "🚀 启动中……正在连接 GLM 并规划（第一步通常需 10-30 秒）"},
+    "spinner":            {"en": "The agent is investigating autonomously...",
+                           "cn": "智能体正在自主调查……"},
+    "status_starting":    {"en": "🚀 Starting… connecting to the LLM and planning (first step can take 10-30s)",
+                           "cn": "🚀 启动中……正在连接 LLM 并规划（第一步通常需 10-30 秒）"},
     "status_running":     {"en": "Working: {node} · step {step} · {secs}s elapsed",
                            "cn": "调查中：{node} · 第 {step} 步 · 已用 {secs} 秒"},
     "status_done":        {"en": "✅ Investigation finished — {step} steps in {secs}s",
                            "cn": "✅ 调查完成 —— 共 {step} 步，用时 {secs} 秒"},
     "status_error":       {"en": "❌ Investigation failed", "cn": "❌ 调查失败"},
-    "first_event":        {"en": "⏳ GLM is reading the chain and forming a plan…",
-                           "cn": "⏳ GLM 正在读取链上数据并制定计划……"},
+    "first_event":        {"en": "⏳ The agent is reading the chain and forming a plan…",
+                           "cn": "⏳ 智能体正在读取链上数据并制定计划……"},
     "plan_prefix":        {"en": "Plan", "cn": "规划"},
     "step_word":          {"en": "step", "cn": "步骤"},
     "risk_word":          {"en": "risk", "cn": "风险"},
@@ -185,7 +185,7 @@ TRANSLATIONS = {
 
 NODE_LABEL_I18N = {
     "plan":    {"en": ("🧭", "Plan"),                 "cn": ("🧭", "规划")},
-    "act":     {"en": ("🤖", "Act (GLM reasoning)"),  "cn": ("🤖", "行动（GLM 推理）")},
+    "act":     {"en": ("🤖", "Act (LLM reasoning)"),  "cn": ("🤖", "行动（LLM 推理）")},
     "observe": {"en": ("🔧", "Observe (tool result)"), "cn": ("🔧", "观察（工具结果）")},
     "reflect": {"en": ("🔁", "Reflect / self-correct"), "cn": ("🔁", "反思 / 自我纠正")},
     "replan":  {"en": ("⏰", "Replan (wrap up)"),      "cn": ("⏰", "重规划（收尾）")},
@@ -238,7 +238,7 @@ with st.sidebar:
     st.markdown("# 🔍 ChainScope")
     st.caption(t("tagline"))
     st.divider()
-    model = st.selectbox(t("model_label"), ["glm-5.1"], index=0,
+    model = st.selectbox(t("model_label"), [cs_config.LLM_MODEL], index=0,
                          help=t("model_help"))
     st.session_state.setdefault("window_days", 30)
     window_days = st.number_input(t("window_label"), min_value=1, max_value=6000,
@@ -314,11 +314,11 @@ if _span is not None:
 
 
 def _render_act(update):
-    """Render an ACT update: GLM reasoning + any tool calls it decided on."""
+    """Render an ACT update: LLM reasoning + any tool calls it decided on."""
     for m in update.get("messages", []):
         content = getattr(m, "content", "")
         if content:
-            st.markdown(f"🤖 **GLM:** {content}")
+            st.markdown(f"🤖 **{cs_config.LLM_MODEL}:** {content}")
         for tc in getattr(m, "tool_calls", None) or []:
             args = tc.get("args", {})
             st.markdown(f"&nbsp;&nbsp;↳ 🛠️ calling **`{tc.get('name')}`** "
@@ -606,7 +606,7 @@ if investigate and address:
 st.markdown("---")
 st.markdown(
     "<div style='text-align:center; color:#718096'>"
-    "ChainScope v2.0 | GLM Agent (LangGraph) + GB-TGAD + EAS Sepolia | "
+    "ChainScope v2.0 | LLM Agent (LangGraph) + GB-TGAD + EAS Sepolia | "
     "<a href='https://github.com/SKYEJT/ChainScope' style='color:#3182ce'>GitHub</a>"
     "</div>",
     unsafe_allow_html=True,

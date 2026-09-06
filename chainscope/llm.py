@@ -1,32 +1,31 @@
 """LLM configuration for ChainScope Agent.
 
-The project is locked to GLM-5.1 (Z.AI track rule): get_llm enforces it via
-config.require_glm_5_1 and raises if ZAI_MODEL is anything else.
+Single entry point for every model call. Any OpenAI-compatible chat endpoint
+that supports tool calling works; the choice lives in .env (see config.py):
 
-Relevant env vars (see config.py):
-  ZAI_MODEL      must be glm-5.1 (default)
-  ZAI_API_KEY    API key
-  ZAI_BASE_URL   OpenAI-compatible base url
+  LLM_MODEL      e.g. glm-5.1 (default), deepseek-v4-flash, deepseek-v4-pro
+  LLM_API_KEY    API key for that endpoint
+  LLM_BASE_URL   OpenAI-compatible base url, e.g. https://api.deepseek.com
+
+The legacy ZAI_* names are still accepted as fallbacks.
 """
 from langchain_openai import ChatOpenAI
 
-from chainscope.config import ZAI_API_KEY, ZAI_BASE_URL, ZAI_MODEL, require_glm_5_1
+from chainscope.config import LLM_API_KEY, LLM_BASE_URL, resolve_model
 
 
 def get_llm(model: str | None = None, temperature: float = 0.1, **kwargs) -> ChatOpenAI:
-    """Get a configured GLM chat model (OpenAI-compatible endpoint).
+    """Get a configured chat model (OpenAI-compatible endpoint).
 
     Args:
-        model: explicit model name; falls back to ZAI_MODEL env. MUST resolve to
-               glm-5.1 — anything else raises RuntimeError (Z.AI track requirement).
+        model: explicit model name; falls back to LLM_MODEL from the environment.
         temperature: sampling temperature.
         **kwargs: forwarded to ChatOpenAI (e.g. max_tokens, timeout).
     """
-    model = require_glm_5_1(model if model is not None else ZAI_MODEL)
     return ChatOpenAI(
-        model=model,
-        api_key=ZAI_API_KEY,
-        base_url=ZAI_BASE_URL,
+        model=resolve_model(model),
+        api_key=LLM_API_KEY,
+        base_url=LLM_BASE_URL,
         temperature=temperature,
         **kwargs,
     )

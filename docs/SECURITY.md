@@ -20,7 +20,7 @@
 - Etherscan free tier: 5 calls/sec, 100K/day (fallback only)
 - Ankr public RPC: free (balance / block queries)
 - Sepolia gas: free test ETH from faucets
-- GLM API: GLM-5.1 (paid Z.AI API; enforced by `config.require_glm_5_1` — no other model is accepted)
+- LLM API: paid, OpenAI-compatible endpoint chosen in `.env` (`LLM_MODEL` / `LLM_BASE_URL` / `LLM_API_KEY`; GLM-5.1 by default, DeepSeek V4 supported). The key never leaves the server-side `.env`.
 - Built-in rate limiting, on-disk caching and request retry keep API usage well inside free tiers.
 
 ## Failure Handling
